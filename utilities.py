@@ -45,8 +45,9 @@ def sendMessage(studentId, subject, body):
         "context_code": f"course_{c.courseId}",
         "bulk_message": True
     }
-    # response = requests.post(f"{c.canvasURL}/conversations?force_new=true", headers=c.headers, json=payload )
-    # return response.json()
+    response = requests.post(f"{c.canvasURL}/conversations?force_new=true", headers=c.headers, json=payload )
+    status = response.json()
+    return status
 
 def getCanvasData(url, params={}, fileName=0):
     try:

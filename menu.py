@@ -1,5 +1,5 @@
 # from  nameGroups import renameGroups
-from  canvas import startUp, courseId, setParams, getStudentList, listAssignments, sendStatusLetters, sendMessage, listTeamMembersByGroup, studentSearch
+from  canvas import startUp, courseId, setParams, getStudentList, listAssignments, sendStatusLetters, sendMessage, listTeamMembersByGroup, studentSearch, renameGroups, showAssignmentDates
 
 def main():
 
@@ -12,7 +12,7 @@ def main():
         print("1.  Team Members       2. Students in Team")
         print("3.  List Unsubmitted   4. Missing Assignment Letters")
         print("5.  Message 1 student  6. Message Class")
-        print("10. Set School and Class")
+        print("7.  Assignment Dates  10. Set School and Class")
         print("E(x)it")
 
         # print("5. Rename Groups")
@@ -39,9 +39,10 @@ def main():
                 subject   = input("Subject: ")
                 body      = input("Body: ")
                 sendMessage(studentIds, subject, body)
-
-            # case 'r':
-            #     renameGroups()
+            case '7':
+                showAssignmentDates()
+            case 'r':
+                renameGroups()
             case '10':
                 setParams()
             case 'x':

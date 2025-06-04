@@ -1,6 +1,8 @@
 import sys
 import requests
 import json
+import calendar
+
 from utilities import sendMessage, sortByAttr, getCanvasData
 from datetime  import datetime, timezone, timedelta
 from colors    import x, rowColor
@@ -102,7 +104,6 @@ def studentSearch():
     group = ""
     sortBy = input("Sort By (first, last, group, score, login, tz, email, id, search): ")
 
-    size = 0
     while len(sortBy) > 0:
         if sortBy == "search":
             name = input("Enter First or Last Name: ")
@@ -110,6 +111,8 @@ def studentSearch():
         else:
             sortBy, students = sortByAttr(studentList, sortBy)
         print(f"# of Students: {len(students)}")
+
+        size = 0
         for student in students:
             match sortBy:
                 case    "search"    :
@@ -131,7 +134,7 @@ def studentSearch():
                         size = 0                            #   reset the group size
                     size += 1                               #   increment the group size
                     print(f"{rowColor()}{student["first"]} {student["last"]} : {student["login"]} : {student["email"]} : {student["tz"]}{x.reset}")
-                case "login" | "lastActivity":
+                case "login" | "lastActivity" | "lastLogin":
                     print(f"{rowColor()}{student["first"]} {student["last"]} : {student["login"]} : {student["group"]} : {student["lastActivity"]}{x.reset}");
                     lastLogin = datetime.fromisoformat(student["lastLogin"])
                     aWeekAgo = datetime.now(lastLogin.tzinfo) - timedelta(days=7)
@@ -143,7 +146,8 @@ def studentSearch():
                 case "score" | "activityTime" | "grade":
                     print(f"{rowColor()}{student["first"]} {student["last"]} : {student["score"]} : {student["grade"]} : {student["activityTime"]}{x.reset}");
                 case "first" | "tz":
-                    print(f"{rowColor()}{student["first"]} {student["last"]} : {student["group"]} : {student["email"]} : {student["tz"]}{x.reset}")
+                    size += 1
+                    print(f"{rowColor()}{size:2d} {student["first"]} {student["last"]} : {student["group"]} : {student["email"]} : {student["tz"]}{x.reset}")
                 case _:
                     print(f"{rowColor()}{student["first"]} {student["last"]} : {student["email"]} : {student["id"]}{x.reset}")
         sortBy = input(f"{x.reset}Sort By (first, last, group, score, login, tz, email, id, search): ")
@@ -171,17 +175,14 @@ def getAllStudentDetails(courseId):
             profile   = getStudentProfile(student["id"])
             lastLogin = getLastLogin(student["id"])
 
-            lastLogin = (
-                        lastLogin.replace("T", " ")[5:16]
-                        if lastLogin else "     "
-            )
+            lastLogin = lastLogin if lastLogin else "2025-01-01T00:00:00-05:00"
 
             lastName, rest = student["sortable_name"].split(", ")
             firstName = rest.split(" ")[0].ljust(10)[:10]
             tm  = scores[student["id"]]["activityTime"]
 
             student["activityTime"] = f"{int(tm/60):4d}.{tm%60:02d}"
-            student["email"]        = student["email"].ljust(30)
+            student["email"]        = student["email"].ljust(36)
             student["first"]        = firstName.ljust(10)[:10]
             student["grade"]        = scores[student["id"]]["grade"]
             student["group"]        = "Team XX"
@@ -191,10 +192,17 @@ def getAllStudentDetails(courseId):
             student["login"]        = lastLogin.replace("T", " ")[5:16]
             student["name"]         = student["sortable_name"]
             student["score"]        = scores[student["id"]]["score"]
-            student["tz"]           = profile["time_zone"].ljust(15)
+            student["tz"]           = profile["time_zone"].ljust(20)
             _studentsById[courseId][student.get("id")] = student
 
     return _studentsById[courseId]
+
+def showAssignmentDates():
+    assignments = getAssignments(courseId)
+    print(f"{'Title':<55} {'Due Date':<10} {'Lock Date':<10} {'Points':>7} {'Has Submissions?':<15}")
+    print("-" * 100)
+    for assignment in assignments:
+        print(f"{assignment['title']:<55} {assignment['dueAt']}     {assignment['lockAt']} {assignment['possiblePts']:>7}     {str(assignment['hasSubmissions']):<15}")
 
 def listAssignments():
     row = 0
@@ -266,13 +274,15 @@ def getAssignments(courseId):
 
         sub = [        {
             "id"             : a["id"],
-            "dueAt"          : a["due_at"],
-            "loc`kAt"         : a["lock_at"],
+            "dueAt"          : calendar.month_abbr[int(a["due_at"][5:7])]  + " " + a["due_at"][8:10],
+            "dueDate"        : a["due_at"][5:7],
+            "lockAt"         : calendar.month_abbr[int(a["lock_at"][5:7])] + " " + a["lock_at"][8:10],
             "possiblePts"    : f"{a["points_possible"]:2.0f}",
             "title"          : a["name"].ljust(55),
             "hasSubmissions" : a["has_submitted_submissions"]
         } for a in tmp]
 
+        _, sub = sortByAttr(sub, "title")
         _assignments[courseId] = sub;
 
     return _assignments[courseId]
@@ -295,7 +305,7 @@ def showStudent(studentId, name):
         if student is None:
             print(f"    - {name} has dropped the course")
             return
-        print(f"{rowColor()}    - {student.get("first")} {student.get("last")} {student.get("email")} - {student.get("tz")} ")
+        print(f"{rowColor()}    - {student.get("first")} {student.get("last")} {student.get("email")} - {student.get("tz")}{x.reset}")
 
 # Get Last Login
 def getCourseActivity(courseId):
@@ -448,7 +458,7 @@ def statusLetter(studentScores, lo, hi, unfinishedAssignments, subject, body):
 
     # today = datetime.now(timezone.utc)  # Make "today" timezone-aware
     for s in mailList:
-        missed = "\n".join(f"{rowColor()}\t{a['title']}" for a in unfinishedAssignments[s["id"]]["submissions"] if a.get("missed")) or ""     
+        missed = "\n".join(f"\t{a['title']}" for a in unfinishedAssignments[s["id"]]["submissions"] if a.get("missed")) or ""     
         
         # pastAssignments = [a for a in unfinishedAssignments[s["id"]]["submissions"]
         #                    if datetime.fromisoformat(a["dueAt"]) < today and a.get("missed")]
@@ -463,8 +473,8 @@ def statusLetter(studentScores, lo, hi, unfinishedAssignments, subject, body):
         if s["id"] not in unfinishedAssignments or not go:
             continue
 
-        sendMessage([s["id"]],  f"{subject} {s["score"]}",
-                                f"\n{s["first"]},\n{body}\nMissing Assignments(if any)\n\t{missed}\n\nBro. James")
+        sendMessage([f"{s["id"]}"],  f"{subject} {s["score"]}",
+                     f"\n{s["first"]},\n{body}\nMissing Assignments(if any)\n\t{missed}\n\nBro. James")
 
 def getAnnouncements(courseId):
     global _announcements
@@ -486,8 +496,8 @@ def setParams():
     else:
         school   = input("Enter School: ")
         courseId = input("Enter Course: ")
-    school   = "byupw" if school   == "" else school
-    courseId = "7113"  if courseId == "" else courseId
+    school   = "byupw"  if school   == "" else school
+    courseId = "13819"  if courseId == "" else courseId
 
     setSchool(school)
     return courseId
@@ -507,5 +517,49 @@ def setSchool(school):
 
 def startUp():
     getAllStudentDetails (courseId)       #   _studentList
-    getStudentGroups      (courseId)       #   _categories
+    getStudentGroups     (courseId)       #   _categories
 
+def renameGroups():
+    times = [
+        "16:00 UTC --  10:00 Mtn",      #  good for western hemisphere PM and eastern hemisphere PM
+        "18:00 UTC --  12:00 Mtn",  
+        "20:00 UTC --  14:00 Mtn",
+        "22:00 UTC --  16:00 Mtn",      #  good for eastern hemisphere AM and western hemisphere PM
+        " 0:00 UTC --  18:00 Mtn",  
+        " 2:00 UTC --  20:00 Mtn",
+        " 8:00 UTC --   2:00 Mtn",      #  good for eastern hemisphere PM
+        "12:00 UTC --   6:00 Mtn",
+        "14:00 UTC --   8:00 Mtn",
+    ]
+
+    categories = getStudentGroups(courseId)
+
+    for category in categories:
+        print(f"{category.get('name')}")
+        groups = getGroups(category['id'])
+        if len(groups) == 1:
+            continue
+
+        grpNum  = 0
+        teamNum = 0
+        first=True
+
+        for group in groups:
+            print(f"{group['name']}")
+            if first:
+                teamName = "People Dropping the Class",
+            else:
+                teamName = f"Team {teamNum:02d} WDD330 {"Tuesday" if grpNum < 8 else "Wednesday"} {times[grpNum%8]} "
+            
+            print(teamName)
+
+            data = { "name": teamName, "max_membership": 7 }
+            requests.put(f"{canvasURL}/groups/{group["id"]}", headers=headers, data=data)
+
+            if first:
+                first = False
+                continue
+            grpNum=grpNum+1
+            teamNum=teamNum+1
+            if teamNum == 8:
+                teamNum=teamNum+2
