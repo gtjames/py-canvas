@@ -7,34 +7,65 @@
 *   You can also use option space space CourseId
 *   and it will default to byupw
 ##  Main Menu
-##  0. Student List
-        who is in the class. You can sort by name or email
+##  1. Team Members
+        (1) Solo                Students alone in group
+        (0) All                 All teams with team members
+        (u) Unassigned          People not yet in a group
 
-##  2. List Team Members
-        Who is on or NOT on a team
-        Options are:
-        (1) Solo        teams with a single person. Need to push them to a bigger team
-        (0) All         Every person that is on a team
-        (u) Unassigned  People that have not found a team
+##  2. Students in Teams
+        Sort students in class by:
+                first, last, group, score, login, tz, email, id, 
+        If you enter in 'search'
+                you will be asked to endter part of the students name
+                then everything about the student will be retrieved
 
-##  3. Rename Groups
+##  3. List Unsubmitted
+        Notify?         'Y' if you want to message them
+        Message?        Subject line if you want to send students a message
+        (A)ll           Send students or show all assignments
+        (M)issing       Only send/show missing assignments
+
+##  4.  Missing Assignment Letters
+        Groups students by score and send different letters to the
+        90% or better
+        70 - 89%
+        < 70$
+        go/no go?       go to send letter
+        Show Missed?    'y' to include missing assignments
+
+##  5. Message 1 student
+        Student Id:     Need the student Id
+        Subject:        Message subject
+        Body:           Message body
+
+##  6. Message class
+        Sends everyone in the class the same message
+        Subject:        Message subject
+        Body:           Message body
+
+##  7.Show Assignment Dates
+        Submission dates for all assignments
+        sort by title, dueDate, lockDate, points
+
+##  r. Rename Groups
         I think the groups should have other names
         This renames the groups to my liking
-        Team 00 WDD330 Tuesday  1 PM UTC --  6 AM Mtn 
-        Team 01 WDD330 Tuesday  3 PM UTC --  8 AM Mtn 
-        Team 02 WDD330 Tuesday  5 PM UTC -- 10 AM Mtn 
-        Team 03 WDD330 Tuesday  7 PM UTC --  Noon Mtn 
-        Team 04 WDD330 Tuesday  9 PM UTC --  2 PM Mtn 
-        Team 05 WDD330 Tuesday 11 PM UTC --  4 PM Mtn 
-        Team 06 WDD330 Tuesday  1 AM UTC --  6 PM Mtn 
-        Team 07 WDD330 Tuesday  3 AM UTC --  8 PM Mtn 
-        Team 10 WDD330 Thursday  1 PM UTC --  6 AM Mtn 
-        Team 11 WDD330 Thursday  3 PM UTC --  8 AM Mtn 
-        Team 12 WDD330 Thursday  5 PM UTC -- 10 AM Mtn 
-##  4. Review Unsubmitted
-        It's time to check who has not turned in what
-##  5. Students w/ Teams
-        My favorite option
-        List everyone in a team
-        Sort By first, last, and group
-##  9. Exit
+        Team 00 Tuesday 14:00 UTC --  08:00 Mtn
+        Team 01 Tuesday 16:00 UTC --  10:00 Mtn
+        Team 02 Tuesday 18:00 UTC --  12:00 Mtn
+        Team 03 Tuesday 20:00 UTC --  14:00 Mtn
+        Team 04 Tuesday 22:00 UTC --  16:00 Mtn
+        Team 05 Tuesday 00:00 UTC --  18:00 Mtn
+        Team 06 Tuesday 02:00 UTC --  20:00 Mtn
+        Team 07 Tuesday 03:00 UTC --  21:00 Mtn
+
+        Team 10 Wednesday 14:00 UTC --  08:00 Mtn
+        Team 11 Wednesday 16:00 UTC --  10:00 Mtn
+        Team 12 Wednesday 18:00 UTC --  12:00 Mtn
+        Team 13 Wednesday 20:00 UTC --  14:00 Mtn
+        Team 14 Wednesday 22:00 UTC --  16:00 Mtn
+        Team 15 Wednesday 00:00 UTC --  18:00 Mtn
+        Team 16 Wednesday 02:00 UTC --  20:00 Mtn
+        Team 17 Wednesday 03:00 UTC --  21:00 Mtn
+
+##  x. Exit

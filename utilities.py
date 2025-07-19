@@ -78,3 +78,13 @@ def readJSON(fileName):
         data = json.load(file)
         # print(f"Done reading {fileName}")
         return data
+
+def checkFolders():
+    # Check if the cache directory exists, if not, create it
+    if not os.path.exists("./cache"):
+        os.makedirs("./cache")
+    
+    # Check if the course-specific directory exists, if not, create it
+    course_path = f"./cache/{c.courseId}"
+    if not os.path.exists(course_path):
+        os.makedirs(course_path)
