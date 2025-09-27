@@ -95,7 +95,7 @@ def listTeamMembersByGroup():
         grpType = input("(1) Solo, (0) All, (u) Unassigned: ")
 
 def studentSearch():
-    studentList = getStudentList(courseId)
+    studentList = getStudentList()
 
     notifyNoneParticipating = False
     if input("Email Non Participating?: ") == "y":
@@ -129,7 +129,7 @@ def studentSearch():
                     if group != student["group"]:           #   did the group change?
                         if size > 0:                        #   if so, print the group size
                             print(f"Members in Group {size}")
-                        print(f"\t\t{student["group"]}")    #   print the group name
+                        print(f"{x.bgGreen}\t\t{student["group"]}\t\t\t{x.reset}")    #   print the group name
                         group = student["group"]            #   save current group
                         size = 0                            #   reset the group size
                     size += 1                               #   increment the group size
@@ -390,7 +390,7 @@ def getLastLogin(studentId):
 def getAllSubmissions(courseId):
     if courseId not in _submissionsByStudent:
 
-        students    = getStudentList(courseId)
+        students    = getStudentList()
         assignments = getAssignments(courseId)
 
         allSubmissions = {}
@@ -443,7 +443,7 @@ def getSubmissions(courseId, assignment):
     return _allSubmission[assignment["id"]]
 
 def sendStatusLetters():
-    studentList     = getStudentList(courseId)
+    studentList     = getStudentList()
     pastAssignments = getAllSubmissions(courseId)
 
     _, studentList = sortByAttr(studentList, "score")
@@ -500,7 +500,7 @@ def setParams():
     global school
     global courseId
     school   = "byupw"
-    courseId = "17840"
+    courseId = "22347"
 
     setSchool(school)
     return courseId

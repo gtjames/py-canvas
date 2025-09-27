@@ -46,6 +46,6 @@ def rowColor(inc=0):
     global row
 
     row += 1 + inc
-    rowbgColor = x.reset    if (row % 2) else x.bgBlack
+    rowbgColor = x.bgBWhite   if (row % 2) else x.bgBlack
     rowfgColor = x.fgBlack if (row % 2) else x.fgWhite
     return rowbgColor + rowfgColor
