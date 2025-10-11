@@ -37,21 +37,21 @@ def normalizeValue(value):
             return value.lower()
     return value  # Return as-is for other types
 
-def sendMessage(studentId, subject, body):
+def sendMessage(courseId, studentId, subject, body):
     payload = {
         "recipients": studentId,
         "subject": f"WDD 330 - {subject}",
         "body": f"{body}",
-        "context_code": f"course_{c.courseId}",
+        "context_code": f"course_{courseId}",
         "bulk_message": True
     }
     response = requests.post(f"{c.canvasURL}/conversations?force_new=true", headers=c.headers, json=payload )
     status = response.json()
     return status
 
-def getCanvasData(url, params={}, fileName=0):
+def getCanvasData(courseId, url, params={}, fileName=0):
     try:
-        if fileName and os.path.exists(f"./cache/{c.courseId}/{fileName}.json"):
+        if fileName and os.path.exists(f"./cache/{courseId}/{fileName}.json"):
             return readJSON(fileName)
         # print(f"API {c.canvasURL}{url}");
 
