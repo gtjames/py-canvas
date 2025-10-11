@@ -506,7 +506,6 @@ def setParams():
     global school
     global courseId
     school   = "byupw"
-    courseId = "22347"
 
     setSchool(school)
     return courseId
@@ -515,6 +514,7 @@ def setParams():
 def setSchool(school):
     global canvasURL
     global headers
+    global courseId
 
     canvasURL = f"https://{school}.instructure.com/api/v1"
 
@@ -523,6 +523,7 @@ def setSchool(school):
         data = json.load(file)
 
     headers = { "Authorization": f"Bearer {data[f"{school}"]}" }
+    courseId = data["courseId"]
 
 def startUp():
     checkFolders()
