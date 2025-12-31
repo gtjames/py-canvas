@@ -14,6 +14,7 @@ headers   = ""      # attn:
 
 _announcements = {}
 _assignments   = {}
+_overrides     = {}
 _categories    = {}
 _enrollments   = {}         #   the whole works which we do not need
 _groupMembers  = {}
@@ -31,6 +32,7 @@ _unassigned    = {}
 def clearCache():
     global _announcements
     global _assignments
+    global _overrides
     global _categories
     global _enrollments
     global _groupMembers
@@ -46,6 +48,7 @@ def clearCache():
 
     _announcements      = {}
     _assignments        = {}
+    _overrides          = {}
     _categories         = {}
     _enrollments        = {}
     _groupMembers       = {}
@@ -94,6 +97,9 @@ def listTeamMembersByGroup():
                 print(f"Members: {cnt}")
         grpType = input("(1) Solo, (0) All, (u) Unassigned: ")
 
+def getCourseId():
+    return courseId
+
 def studentSearch():
     studentList = getStudentList()
 
@@ -113,6 +119,20 @@ def studentSearch():
         print(f"# of Students: {len(students)}")
 
         size = 0
+        match sortBy:
+            case "group":                       #   sorting by group
+                print(f"{"first":10} {"last":15} : {"login":11} : {"email":36} : {"tz"}")
+            case "login" | "lastActivity" | "lastLogin":
+                print(f"{"first":10} {"last":15} : {"login":11} : {"group":7} : {"lastActivity"}");
+            case "id":
+                print(f"{"first":10} {"last":15} : {"email":36} : {"login":11} : {"id"}");
+            case "score" | "activityTime" | "grade":
+                print(f"{"first":10} {"last":15} : {"Pts"} : {"grade":3} : {"activityTime"}");
+            case "first" | "tz":
+                print(f"{"  "} {"first":10} {"last":15} : {"group":7} : {"email":36} : {"tz"}")
+            case _:
+                print(f"{"first":10} {"last":15} : {"email":36} : {"id"}")
+
         for student in students:
             match sortBy:
                 case    "search"    :
@@ -201,7 +221,7 @@ def getAllStudentDetails(courseId):
 def showAssignmentDates():
     assignments = getAssignments(courseId)
     sortBy = input("Sort By (title, dueDate, lockDate, points): ")
-
+    sortBy = sortBy if sortBy in ["title", "dueDate", "lockDate", "points"] else "title"
     while len(sortBy) > 0:
         _, assignments = sortByAttr(assignments, sortBy)
 
@@ -209,6 +229,10 @@ def showAssignmentDates():
         print("-" * 100)
         for assignment in assignments:
             print(f"{assignment['title']:<55} {assignment['dueAt']}     {assignment['lockAt']} {assignment['points']:>7}     {str(assignment['hasSubmissions']):<15}")
+            for overRide in _overrides.get(assignment["id"], []):
+                for student in overRide['studentIds']:
+                    print(f"{x.bright}    { _studentsById.get(courseId, {}).get(student).get("name"):<51} {overRide['dueAt']}{x.reset}")
+
         sortBy = input("Sort By (title, dueDate, lockDate, points): ")
 
 def listAssignments():
@@ -276,6 +300,7 @@ def getUnassigned(groupId):
 
 def getAssignments(courseId):
     global _assignments
+    global _overrides
     tmp = {}
     
     if courseId not in _assignments:
@@ -298,6 +323,16 @@ def getAssignments(courseId):
 
     _, sub = sortByAttr(sub, "title")
     _assignments[courseId] = sub;
+
+    for assignment in tmp:
+        if assignment["id"] not in _overrides:
+            tmp = getCanvasData(courseId, f"/courses/{courseId}/assignments/{assignment["id"]}/overrides", {"per_page": 100}, f"ovrRide{assignment["id"]}")
+            sub = [        {
+                    "id"             : a["id"],
+                    "dueAt"          : calendar.month_abbr[int(a["due_at"][5:7])]  + " " + a["due_at"][8:10],
+                    "studentIds"     : a["student_ids"]
+                } for a in tmp]
+            _overrides[assignment["id"]] = sub
 
     return _assignments[courseId]
 
@@ -532,14 +567,22 @@ def startUp():
 
 def renameGroups():
     times = [
-        "14:00 UTC --  08:00 Mtn",
-        "16:00 UTC --  10:00 Mtn",      #  good for western hemisphere PM and eastern hemisphere PM
-        "18:00 UTC --  12:00 Mtn",  
-        "20:00 UTC --  14:00 Mtn",
-        "22:00 UTC --  16:00 Mtn",      #  good for eastern hemisphere AM and western hemisphere PM
-        "00:00 UTC --  18:00 Mtn",  
-        "02:00 UTC --  20:00 Mtn",      #  good for eastern hemisphere PM
-        "03:00 UTC --  21:00 Mtn",
+        "Wed 15:00 UTC --  Wed 08:00 Mtn",
+        "Wed 17:00 UTC --  Wed 10:00 Mtn",      #  good for western hemisphere PM and eastern hemisphere PM
+        "Wed 19:00 UTC --  Wed 12:00 Mtn",  
+        "Wed 21:00 UTC --  Wed 14:00 Mtn",
+        "Wed 23:00 UTC --  Wed 16:00 Mtn",      #  good for eastern hemisphere AM and western hemisphere PM
+        "Thu 01:00 UTC --  Wed 18:00 Mtn",  
+        "Thu 02:00 UTC --  Wed 19:00 Mtn",      #  good for eastern hemisphere PM
+        "Thu 03:00 UTC --  Wed 20:00 Mtn",
+        "Thu 15:00 UTC --  Thu 08:00 Mtn",
+        "Thu 17:00 UTC --  Thu 10:00 Mtn",      #  good for western hemisphere PM and eastern hemisphere PM
+        "Thu 19:00 UTC --  Thu 12:00 Mtn",  
+        "Thu 21:00 UTC --  Thu 14:00 Mtn",
+        "Thu 23:00 UTC --  Thu 16:00 Mtn",      #  good for eastern hemisphere AM and western hemisphere PM
+        "Fri 01:00 UTC --  Thu 18:00 Mtn",  
+        "Fri 02:00 UTC --  Thu 19:00 Mtn",      #  good for eastern hemisphere PM
+        "Fri 03:00 UTC --  Thu 20:00 Mtn",
     ]
 
     categories = getStudentGroups(courseId)
@@ -559,8 +602,7 @@ def renameGroups():
             if first:
                 teamName = "People Dropping the Class",
             else:
-                teamName = f"Team {teamNum:02d} WDD330 {"Tuesday" if grpNum < 8 else "Wednesday"} {times[grpNum%8]} "
-            
+                teamName = f"Team {teamNum:02d} WDD330 {times[grpNum%8]} "
             print(teamName)
 
             data = { "name": teamName, "max_membership": 7 }

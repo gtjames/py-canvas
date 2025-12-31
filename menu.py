@@ -1,5 +1,5 @@
 # from  nameGroups import renameGroups
-from  canvas import startUp, courseId, setParams, getStudentList, listAssignments, sendStatusLetters, sendMessage, listTeamMembersByGroup, studentSearch, renameGroups, showAssignmentDates
+from  canvas import startUp, getCourseId, setParams, getStudentList, listAssignments, sendStatusLetters, sendMessage, listTeamMembersByGroup, studentSearch, renameGroups, showAssignmentDates
 
 def main():
 
@@ -9,7 +9,7 @@ def main():
     
     while True:
         print("\nMain Menu")
-        print("1.  Team Members       2. Students in Team")
+        print("1.  Team Members       2. Student Details")
         print("3.  List Unsubmitted   4. Missing Assignment Letters")
         print("5.  Message 1 student  6. Message Class")
         print("7.  Assignment Dates")
@@ -32,13 +32,13 @@ def main():
                 studentId = input("Student Id: ")
                 subject   = input("Subject: ")
                 body      = input("Body: ")
-                sendMessage([studentId], subject, body)
+                sendMessage(getCourseId(), [studentId], subject, body)
             case '6':
                 studentList = getStudentList()
                 studentIds = [student['id'] for student in studentList]
                 subject   = input("Subject: ")
                 body      = input("Body: ")
-                sendMessage(studentIds, subject, body)
+                sendMessage(getCourseId(), studentIds, subject, body)
             case '7':
                 showAssignmentDates()
             case 'r':
