@@ -200,19 +200,19 @@ def getAllStudentDetails(courseId):
 
             lastName, rest = student["sortable_name"].split(", ")
             firstName = rest.split(" ")[0].ljust(10)[:10]
-            tm  = scores[student["id"]]["activityTime"]
+            tm  = scores[student["id"]]["activityTime"] if student["id"] in scores else 0
 
             student["activityTime"] = f"{int(tm/60):4d}.{tm%60:02d}"
             student["email"]        = student["email"].ljust(36)
             student["first"]        = firstName.ljust(10)[:10]
-            student["grade"]        = scores[student["id"]]["grade"]
+            student["grade"]        = scores[student["id"]]["grade"] if student["id"] in scores else "--"
             student["group"]        = "Team XX"
             student["last"]         = lastName.ljust(15)[:15]
-            student["lastActivity"] = scores[student["id"]]["lastActivity"]
+            student["lastActivity"] = scores[student["id"]]["lastActivity"] if student["id"] in scores else "No activity"
             student["lastLogin"]    = lastLogin
             student["login"]        = lastLogin.replace("T", " ")[5:16]
             student["name"]         = student["sortable_name"]
-            student["score"]        = scores[student["id"]]["score"]
+            student["score"]        = scores[student["id"]]["score"] if student["id"] in scores else "  0"
             student["tz"]           = profile["time_zone"].ljust(20)
             _studentsById[courseId][student.get("id")] = student
 
@@ -575,9 +575,10 @@ def renameGroups():
         "Thu 01:00 UTC --  Wed 18:00 Mtn",  
         "Thu 02:00 UTC --  Wed 19:00 Mtn",      #  good for eastern hemisphere PM
         "Thu 03:00 UTC --  Wed 20:00 Mtn",
+
         "Thu 15:00 UTC --  Thu 08:00 Mtn",
         "Thu 17:00 UTC --  Thu 10:00 Mtn",      #  good for western hemisphere PM and eastern hemisphere PM
-        "Thu 19:00 UTC --  Thu 12:00 Mtn",  
+        "Thu 19:00 UTC --  Thu 12:00 Mtn",      
         "Thu 21:00 UTC --  Thu 14:00 Mtn",
         "Thu 23:00 UTC --  Thu 16:00 Mtn",      #  good for eastern hemisphere AM and western hemisphere PM
         "Fri 01:00 UTC --  Thu 18:00 Mtn",  
