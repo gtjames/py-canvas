@@ -567,23 +567,23 @@ def startUp():
 
 def renameGroups():
     times = [
-        "Wed 15:00 UTC --  Wed 08:00 Mtn",
-        "Wed 17:00 UTC --  Wed 10:00 Mtn",      #  good for western hemisphere PM and eastern hemisphere PM
-        "Wed 19:00 UTC --  Wed 12:00 Mtn",  
-        "Wed 21:00 UTC --  Wed 14:00 Mtn",
-        "Wed 23:00 UTC --  Wed 16:00 Mtn",      #  good for eastern hemisphere AM and western hemisphere PM
-        "Thu 01:00 UTC --  Wed 18:00 Mtn",  
-        "Thu 02:00 UTC --  Wed 19:00 Mtn",      #  good for eastern hemisphere PM
-        "Thu 03:00 UTC --  Wed 20:00 Mtn",
+        "Team 00 Wed 15:00 UTC --  Wed 08:00 Mtn",  # popular time
+        "Team 01 Wed 17:00 UTC --  Wed 10:00 Mtn",  # popular time
+        "Team 02 Wed 19:00 UTC --  Wed 12:00 Mtn",  
+        "Team 03 Wed 21:00 UTC --  Wed 14:00 Mtn",
+        "Team 04 Wed 23:00 UTC --  Wed 16:00 Mtn",  # popular time
+        "Team 05 Thu 01:00 UTC --  Wed 18:00 Mtn",  # a little popular time
+        "Team 06 Thu 02:00 UTC --  Wed 19:00 Mtn",
+        "Team 07 Thu 03:00 UTC --  Wed 20:00 Mtn",
 
-        "Thu 15:00 UTC --  Thu 08:00 Mtn",
-        "Thu 17:00 UTC --  Thu 10:00 Mtn",      #  good for western hemisphere PM and eastern hemisphere PM
-        "Thu 19:00 UTC --  Thu 12:00 Mtn",      
-        "Thu 21:00 UTC --  Thu 14:00 Mtn",
-        "Thu 23:00 UTC --  Thu 16:00 Mtn",      #  good for eastern hemisphere AM and western hemisphere PM
-        "Fri 01:00 UTC --  Thu 18:00 Mtn",  
-        "Fri 02:00 UTC --  Thu 19:00 Mtn",      #  good for eastern hemisphere PM
-        "Fri 03:00 UTC --  Thu 20:00 Mtn",
+        "Team 10 Thu 15:00 UTC --  Thu 08:00 Mtn",
+        "Team 11 Thu 17:00 UTC --  Thu 10:00 Mtn",      #  good for western hemisphere PM and eastern hemisphere PM
+        "Team 12 Thu 19:00 UTC --  Thu 12:00 Mtn",  # popular time
+        "Team 13 Thu 21:00 UTC --  Thu 14:00 Mtn",
+        "Team 14 Thu 23:00 UTC --  Thu 16:00 Mtn",  # popular time
+        "Team 15 Fri 01:00 UTC --  Thu 18:00 Mtn",  
+        "Team 16 Fri 02:00 UTC --  Thu 19:00 Mtn",      #  good for eastern hemisphere PM
+        "Team 17 Fri 03:00 UTC --  Thu 20:00 Mtn",
     ]
 
     categories = getStudentGroups(courseId)
@@ -595,15 +595,14 @@ def renameGroups():
             continue
 
         grpNum  = 0
-        teamNum = 0
-        first=True
+        first   = True
 
         for group in groups:
             print(f"{group['name']}")
             if first:
                 teamName = "People Dropping the Class",
             else:
-                teamName = f"Team {teamNum:02d} WDD330 {times[grpNum%8]} "
+                teamName = times[grpNum]
             print(teamName)
 
             data = { "name": teamName, "max_membership": 7 }
@@ -613,6 +612,3 @@ def renameGroups():
                 first = False
                 continue
             grpNum=grpNum+1
-            teamNum=teamNum+1
-            if teamNum == 8:
-                teamNum=teamNum+2
