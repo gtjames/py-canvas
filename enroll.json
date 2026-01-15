@@ -1,4 +1,4 @@
-getAnnouncements(courseId)
+// getAnnouncements(courseId)
 {
     'id': 87388,
     'title': 'Tuesday March 18th Office Hour - How to create your final personal project',
