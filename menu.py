@@ -1,18 +1,18 @@
 # from  nameGroups import renameGroups
-from  canvas import startUp, getCourseId, setParams, getStudentList, listAssignments, sendStatusLetters, sendMessage, listTeamMembersByGroup, studentSearch, renameGroups, showAssignmentDates
+from  canvas import startUp, getCourseId, setParams, getStudentList, listAssignments, sendStatusLetters, sendMessage, listTeamMembersByGroup, studentSearch, renameGroups, showAssignmentDates, extendDueDates
 
 def main():
 
 # Print all command-line arguments
     setParams()
-    startUp();
+    startUp()
     
     while True:
         print("\nMain Menu")
         print("1.  Team Members       2. Student Details")
         print("3.  List Unsubmitted   4. Missing Assignment Letters")
         print("5.  Message 1 student  6. Message Class")
-        print("7.  Assignment Dates")
+        print("7.  Assignment Dates   8. Extend Due Dates")
         print("E(x)it")
 
         # print("5. Rename Groups")
@@ -27,7 +27,7 @@ def main():
             case '3':
                 listAssignments()
             case '4':
-                sendStatusLetters();
+                sendStatusLetters()
             case '5':
                 studentId = input("Student Id: ")
                 subject   = input("Subject: ")
@@ -41,6 +41,8 @@ def main():
                 sendMessage(getCourseId(), studentIds, subject, body)
             case '7':
                 showAssignmentDates()
+            case '8':
+                extendDueDates()
             case 'r':
                 renameGroups()
             case 'x':

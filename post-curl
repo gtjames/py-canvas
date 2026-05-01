@@ -1,0 +1,6 @@
+curl 'https://byupw.instructure.com/api/v1/courses/32150/assignments/478069/overrides.json' \
+     -X POST \
+     -F 'assignment_override[student_ids][]=56697' \
+     -F 'assignment_override[title]=Fred Flinstone' \
+     -F 'assignment_override[due_at]=2026-10-08T21:00:00Z' \
+     -H "Authorization: Bearer 27093~GhRaHZ66xr7VRRJAzcN4yWTrwK3ewFMPE8hyCXuecYuzBTPae8nmwnKLhe3XrJJk"

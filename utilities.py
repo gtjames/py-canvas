@@ -1,3 +1,4 @@
+from pathlib import Path
 import requests
 import canvas as c
 import json
@@ -49,32 +50,39 @@ def sendMessage(courseId, studentId, subject, body):
     status = response.json()
     return status
 
-def getCanvasData(courseId, url, params={}, fileName=0):
-    try:
-        if fileName and os.path.exists(f"./cache/{courseId}/{fileName}.json"):
-            return readJSON(fileName)
-        # print(f"API {c.canvasURL}{url}");
+def getCanvasData(courseId, url, params, fileName, folder):
+    cacheDir = Path(f"./cache/{courseId}/{folder}")
+    cacheDir.mkdir(parents=True, exist_ok=True)
 
-        response = requests.get(f"{c.canvasURL}{url}", headers=c.headers, params=params)
-        if fileName:
-            writeJSON(fileName, response.json())
+    cacheFile = cacheDir / f"{fileName}.json"
 
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        # Handle any HTTP or connection errors
-        print(f"    - {e}")
-        return {}
-    
-def writeJSON(fileName, data):
+    # return cached data if it exists
+    if cacheFile.exists():
+        return readJSON(fileName, folder)
+
+    # otherwise fetch from Canvas
+    response = requests.get( f"{c.canvasURL}{url}", headers=c.headers, params=params)
+    response.raise_for_status()
+
+    data = response.json()
+
+    # cache the result
+    writeJSON(fileName, data, folder)
+
+    return data
+        
+def writeJSON(fileName, data, folder):
     # Write JSON data to file
-    with open(f"./cache/{c.courseId}/{fileName}.json", "w") as file:
+    with open(f"./cache/{c.courseId}/{folder}/{fileName}.json", "w") as file:
         json.dump(data, file, indent=4)
         # print(f"Done writing {fileName}")
 
 
-def readJSON(fileName):
+def readJSON(fileName, folder):
     # Read JSON data from file and convert it back to a dictionary
-    with open(f"./cache/{c.courseId}/{fileName}.json", "r") as file:
+    path = f"./cache/{c.courseId}/{folder}/{fileName}.json"
+
+    with open(path, "r") as file:
         data = json.load(file)
         # print(f"Done reading {fileName}")
         return data
