@@ -1,8 +1,8 @@
 # import sys
 import requests
-import json
 import calendar
 import os
+import shutil
 
 from utilities import sendMessage, sortByAttr, getCanvasData, checkFolders
 from datetime  import datetime, timezone, timedelta
@@ -59,7 +59,7 @@ def clearCache():
     _studentsById       = {}
     _studentAssignments = {}
     _studentAllAssignments = {}
-    _allSubmission = {}
+    _allSubmission      = {}
     _unassigned         = {}
 
 def listTeamMembersByGroup():
@@ -130,12 +130,15 @@ def studentSearch():
                 print(f"{"first":10} {"last":15} : {"Pts"} : {"grade":3} : {"activityTime"}");
             case "first" | "tz":
                 print(f"{"  "} {"first":10} {"last":15} : {"group":7} : {"email":36} : {"tz"}")
+            case "search":
+                print("")
             case _:
                 print(f"{"first":10} {"last":15} : {"email":36} : {"id"}")
 
         for student in students:
             match sortBy:
                 case    "search"    :
+                    assignments    = getAssignments(courseId)
                     allAssignments = getAllSubmissions(courseId)[student["id"]];
                     missed         = [s for s in allAssignments["submissions"] if     s["missed"]]
                     submitted      = [s for s in allAssignments["submissions"] if not s["missed"]]
@@ -152,6 +155,11 @@ def studentSearch():
                         newDue  = input("New Due Date (MM-DD) or Enter to skip: ")
 
                         if len(newDue) != 0:
+                            # // for each missed assignment call extendDueDates
+                            for a in missed:
+                                # // if assignment Due Date is passed and student is missing it, then extend the due date for that student
+                                if datetime.fromisoformat(a["dueAt"]) < datetime.now(timezone.utc):
+                                    extendDueDates(student["id"], a["assignmentId"], newDue)
                             for a in _overrides.values():          # list of overrides
                                 if not overrides:
                                         continue
@@ -160,6 +168,9 @@ def studentSearch():
                     if not missed:
                         print(f"None Missing")
                     else:
+                        # // if there are missed assignments show the current due dates and ask if they want to extend them
+
+
                         for a in missed:
                             if (a.get("assignmentId") in _overrides.keys()):          # list of overrides
                                 overs = _overrides.get(a.get("assignmentId"), [])                 # each override object
@@ -201,21 +212,17 @@ def getAllStudentDetails(courseId):
     global _studentsById
 
     if courseId not in _studentList:
-        params = {
-            "enrollment_type[]": "student",
-            "per_page": 100,  # Maximum allowed per page
-        }
-        _studentList[courseId] = getCanvasData(courseId, f"/courses/{courseId}/users", params, "students", "st")
+        params = { "enrollment_type[]": "student", "per_page": 100 }
+        _studentList = getCanvasData(f"/courses/{courseId}/users", params, "students", "st")
         _studentsById = {}
-        _studentsById[courseId] = {}
 
         scores = getCourseActivity(courseId)
 
         tmp = {
             student["id"]: {
-        } for student in _studentList[courseId]}
+        } for student in _studentList}
 
-        for student in _studentList[courseId]:
+        for student in _studentList:
             profile   = getStudentProfile(student["id"])
             lastLogin = getLastLogin(student["id"])
 
@@ -237,9 +244,9 @@ def getAllStudentDetails(courseId):
             student["name"]         = student["sortable_name"]
             student["score"]        = scores[student["id"]]["score"] if student["id"] in scores else "  0"
             student["tz"]           = profile["time_zone"].ljust(20)
-            _studentsById[courseId][student.get("id")] = student
+            _studentsById[student.get("id")] = student
 
-    return _studentsById[courseId]
+    return _studentsById
 
 def showAssignmentDates():
     assignments = getAssignments(courseId)
@@ -250,13 +257,13 @@ def showAssignmentDates():
         _, assignments = sortByAttr(assignments, sortBy)
 
         print(f"{'Title':<55} {'Due Date':<10} {'Lock Date':<10} {'Points':>7} {'Has Submissions?':<15}")
-        print("-" * 100)
+        print("-" * 102)
         for assignment in assignments:
             print(f"{assignment['title']:<55} {assignment['dueAt']}     {assignment['lockAt']} {assignment['points']:>7}     {str(assignment['hasSubmissions']):<15}")
             if exten == "y" and assignment["has_overrides"]:
                 for overRide in _overrides.get(assignment["id"], []):
                     for student in overRide["studentIds"]:
-                        print(f"{x.fgBBlue}    { _studentsById.get(courseId, {}).get(student).get("name"):<51} {overRide['dueAt'] }     {overRide['lockAt']}{x.reset}")
+                        print(f"{x.fgBBlue}    { _studentsById.get(student).get("name"):<51} {overRide['dueAt'] }     {overRide['lockAt']}{x.reset}")
 
         sortBy = input("Sort By (title, dueDate, lockDate, points): ")
 
@@ -297,9 +304,9 @@ def getStudentGroups(courseId):
     studentsById = getAllStudentDetails(courseId)
 
     if courseId not in _categories:
-        _categories[courseId] = getCanvasData(courseId, f"/courses/{courseId}/group_categories", {}, "categories", "groups")
+        _categories = getCanvasData(f"/courses/{courseId}/group_categories", {}, "categories", "groups")
 
-        for category in _categories[courseId]:
+        for category in _categories:
             if category["name"] == "Who is Here":
                 continue
 
@@ -313,14 +320,14 @@ def getStudentGroups(courseId):
                     if member["id"] in studentsById:
                         studentsById[member["id"]]["group"]     = group["name"][:7]
 
-    return _categories[courseId]
+    return _categories
 
 # Get members not in a group
 def getUnassigned(groupId):
     global _unassigned
 
     if groupId not in _unassigned:
-        _unassigned[groupId] = getCanvasData(courseId, f"/group_categories/{groupId}/users", {"unassigned": True, "per_page": 100}, "unassigned", "st")
+        _unassigned[groupId] = getCanvasData(f"/group_categories/{groupId}/users", {"unassigned": True, "per_page": 100}, "unassigned", "st")
     return _unassigned[groupId]
 
 def getQuizAssignmentData(tmp):
@@ -347,35 +354,39 @@ def getAssignments(courseId):
     global _overrides
     tmp = {}
 
-    if courseId not in _assignments:
-        tmp = getCanvasData(courseId, f"/courses/{courseId}/assignments", {"per_page": 100}, "assignments", "st")
-        saved = getCanvasData(courseId, f"/courses/{courseId}/quizzes", {"per_page": 100}, "quizzes", "st")
+    if not _assignments:
+        tmp1  = getCanvasData(f"/courses/{courseId}/assignments", {"per_page": 100}, "assignments", "st")
+        saved = getCanvasData(f"/courses/{courseId}/quizzes", {"per_page": 100}, "quizzes", "st")
 
         # //   + getQuizAssignmentData(saved)
-        sub = getQuizAssignmentData(tmp)
+        sub = getQuizAssignmentData(tmp1)
         _, sub = sortByAttr(sub, "title")
-        _assignments[courseId] = sub;
+        _assignments = sub;
 
-        for assignment in tmp:
+        for assignment in tmp1:
             if assignment["id"] not in _overrides:
-                tmp = getCanvasData(courseId, f"/courses/{courseId}/assignments/{assignment["id"]}/overrides", {"per_page": 100}, f"{assignment["id"]}", "ovr")
+                tmp = getCanvasData(f"/courses/{courseId}/assignments/{assignment["id"]}/overrides", {"per_page": 100}, f"{assignment["id"]}", "ovr")
+                for a in tmp:
+                    a["due_at"]  = a.get("due_at")  or "2026-12-31"
+                    a["lock_at"] = a.get("lock_at") or "2026-12-31"
+
                 sub = [        {
                         "id"             : a["id"],
                         "dueAt"          : calendar.month_abbr[int(a["due_at"][5:7])]  + " " + a["due_at"][8:10],
-                        "lockAt"         : calendar.month_abbr[int(a["lock_at"][5:7])] + " " + a["lock_at"][8:10] if a["lock_at"] is not None else "None",
+                        "lockAt"         : calendar.month_abbr[int(a["lock_at"][5:7])] + " " + a["lock_at"][8:10],
                         "studentIds"     : a["student_ids"],
                         "title"          : assignment["name"].ljust(55),
                     } for a in tmp]
                 _overrides[assignment["id"]] = sub
 
-    return _assignments[courseId]
+    return _assignments
 
 def getStudentList():
     global _studentList
-    return _studentList[courseId]
+    return _studentList
 
 def getStudentProfile(studentId):
-    return getCanvasData(courseId, f"/users/{studentId}/profile", {}, str(studentId), "students")
+    return getCanvasData(f"/users/{studentId}/profile", {}, str(studentId), "students")
 
 def getStudent(courseId, studentId):
     global _studentsById
@@ -394,8 +405,8 @@ def showStudent(studentId, name):
 def getCourseActivity(courseId):
     global _enrollments
 
-    if courseId not in _enrollments:
-        _enrollments[courseId] = getCanvasData(courseId, f"/courses/{courseId}/enrollments", {"per_page": 100, "type[]": "StudentEnrollment"}, "activity", "st")
+    if not _enrollments:
+        _enrollments = getCanvasData(f"/courses/{courseId}/enrollments", {"per_page": 100, "type[]": "StudentEnrollment"}, "activity", "st")
         tmp = {
             student["user_id"]: {
                 "lastActivity": (
@@ -412,10 +423,10 @@ def getCourseActivity(courseId):
                     if student.get("grades") and student["grades"].get("current_score") is not None else "  0"
                 ),
             }
-            for student in _enrollments[courseId]
+            for student in _enrollments
         }
-    _enrollments[courseId] = tmp
-    return _enrollments[courseId]
+    _enrollments = tmp
+    return _enrollments
 
 # traverse from the categories in a course to the groups to the members
 def listMembers(group, grpType):
@@ -441,7 +452,7 @@ def getGroups(catId):
     global _groups
 
     if catId not in _groups:
-        _groups[catId] = getCanvasData(courseId, f"/group_categories/{catId}/groups", {"per_page": 100}, str(catId), "groups")
+        _groups[catId] = getCanvasData(f"/group_categories/{catId}/groups", {"per_page": 100}, str(catId), "groups")
 
     return _groups[catId]
 
@@ -463,7 +474,7 @@ def getGroupMembers(groupId):
     global _groupMembers
 
     if groupId not in _groupMembers:
-        _groupMembers[groupId] = getCanvasData(courseId, f"/groups/{groupId}/users", {"per_page": 100}, str(groupId), "groups")
+        _groupMembers[groupId] = getCanvasData(f"/groups/{groupId}/users", {"per_page": 100}, str(groupId), "groups")
     return _groupMembers[groupId]
 
 # Get Last Login
@@ -471,12 +482,12 @@ def getLastLogin(studentId):
     global _lastLogin
 
     if studentId not in _lastLogin:
-        _lastLogin[studentId] = getCanvasData(courseId, f"/users/{studentId}", { "include[]": "last_login" }, str(studentId), "ll")
+        _lastLogin[studentId] = getCanvasData(f"/users/{studentId}", { "include[]": "last_login" }, str(studentId), "ll")
 
     return _lastLogin[studentId]["last_login"]
 
 def getAllSubmissions(courseId):
-    if courseId not in _submissionsByStudent:
+    if not _submissionsByStudent:
 
         students    = getStudentList()
         assignments = getAssignments(courseId)
@@ -499,15 +510,15 @@ def getAllSubmissions(courseId):
                 if studentId in submissionsByStudent:
                     submissionsByStudent[studentId]["submissions"].append(submission)
 
-        _submissionsByStudent[courseId] = submissionsByStudent;
+        _submissionsByStudent = submissionsByStudent;
 
-    return _submissionsByStudent[courseId]
+    return _submissionsByStudent
 
 def getSubmissions(courseId, assignment):
     global _allSubmission
 
     if assignment["id"] not in _allSubmission:
-        tmp = getCanvasData(courseId, f"/courses/{courseId}/assignments/{assignment["id"]}/submissions", {"per_page": 100}, str(assignment["id"]), "subm")
+        tmp = getCanvasData(f"/courses/{courseId}/assignments/{assignment["id"]}/submissions", {"per_page": 100}, str(assignment["id"]), "subm")
         _allSubmission[assignment["id"]] = []
         for s in tmp:
             b = {}
@@ -576,9 +587,9 @@ def statusLetter(studentScores, lo, hi, unfinishedAssignments, subject, body):
 def getAnnouncements(courseId):
     global _announcements
 
-    if courseId not in _announcements:
-        _announcements[courseId] = getCanvasData(courseId, f"/courses/{courseId}/discussion_topics?only_announcements=true", {"per_page": 100}, "announcements", "st" )
-    return _announcements[courseId]
+    if not _announcements:
+        _announcements = getCanvasData(f"/courses/{courseId}/discussion_topics?only_announcements=true", {"per_page": 100}, "announcements", "st" )
+    return _announcements
 
 def listAnnouncements():
     announcements = getAnnouncements(courseId)
@@ -597,7 +608,6 @@ def setSchool():
     global headers
     global courseId
 
-
     canvasURL = "https://byupw.instructure.com/api/v1"
 
     courseId = os.getenv("courseId")
@@ -610,24 +620,27 @@ def startUp():
     getStudentGroups     (courseId)       #   _categories
 
 def renameGroups():
-    times = [
-        "Team 00 Wed 15:00 UTC --  Wed 09:00 Mtn",  # popular time
-        "Team 01 Wed 17:00 UTC --  Wed 11:00 Mtn",  # popular time
-        "Team 02 Wed 19:00 UTC --  Wed 13:00 Mtn",
-        "Team 03 Wed 21:00 UTC --  Wed 15:00 Mtn",
-        "Team 04 Wed 23:00 UTC --  Wed 17:00 Mtn",  # popular time
-        "Team 05 Thu 01:00 UTC --  Wed 19:00 Mtn",  # a little popular time
-        "Team 06 Thu 02:00 UTC --  Wed 20:00 Mtn",
-        "Team 07 Thu 03:00 UTC --  Wed 21:00 Mtn",
+    if input("This will reset all the data in the cache. Are you sure? (y/n): ") != "y":
+        return
 
-        "Team 10 Thu 15:00 UTC --  Thu 09:00 Mtn",
-        "Team 11 Thu 17:00 UTC --  Thu 11:00 Mtn",      #  good for western hemisphere PM and eastern hemisphere PM
-        "Team 12 Thu 19:00 UTC --  Thu 13:00 Mtn",  # popular time
-        "Team 13 Thu 21:00 UTC --  Thu 15:00 Mtn",
-        "Team 14 Thu 23:00 UTC --  Thu 17:00 Mtn",  # popular time
-        "Team 15 Fri 01:00 UTC --  Thu 19:00 Mtn",
-        "Team 16 Fri 02:00 UTC --  Thu 20:00 Mtn",      #  good for eastern hemisphere PM
-        "Team 17 Fri 03:00 UTC --  Thu 21:00 Mtn",
+    times = [
+        "Team 00 Tues 16:00 UTC --  Tues 10:00 Mtn",  # popular time in the European and Asian PM
+        "Team 01 Tues 18:00 UTC --  Tues 12:00 Mtn",
+        "Team 02 Tues 19:00 UTC --  Tues 13:00 Mtn",
+        "Team 03 Tues 20:00 UTC --  Tues 14:00 Mtn",
+        "Team 04 Tues 23:00 UTC --  Tues 17:00 Mtn",  # popular time in the US
+        "Team 05 Wed  01:00 UTC --  Tues 19:00 Mtn",
+        "Team 06 Wed  02:00 UTC --  Tues 20:00 Mtn",
+        "Team 07 Wed  03:00 UTC --  Tues 21:00 Mtn",
+
+        "Team 10 Wed  16:00 UTC --  Wed  10:00 Mtn",
+        "Team 11 Wed  18:00 UTC --  Wed  12:00 Mtn",
+        "Team 12 Wed  19:00 UTC --  Wed  13:00 Mtn",
+        "Team 13 Wed  20:00 UTC --  Wed  14:00 Mtn",
+        "Team 14 Wed  23:00 UTC --  Wed  17:00 Mtn",
+        "Team 15 Thu  01:00 UTC --  Wed  19:00 Mtn",
+        "Team 16 Thu  02:00 UTC --  Wed  20:00 Mtn",
+        "Team 17 Thu  03:00 UTC --  Wed  21:00 Mtn",
     ]
 
     categories = getStudentGroups(courseId)
@@ -656,3 +669,42 @@ def renameGroups():
                 first = False
                 continue
             grpNum=grpNum+1
+
+def reset():
+    if input("This will reset all the data in the cache. Are you sure? (y/n): ") == "y":
+        clearCache()
+    if(input("Also reset the files? (y/n): ") == "y"):
+        resetFiles()
+
+def resetFiles():
+    if input("This will reset all the data files. Are you sure? (y/n): ") == "y":
+        for cacheDir in os.listdir("cache"):
+            for file in os.listdir(f"cache/{cacheDir}"):
+                if input(f"Remove {file}. Are you sure? (y/n): ") == "y":
+                    os.remove(os.path.join("cache", cacheDir, file))
+
+def reset():
+    if input("This will reset all the data in the cache. Are you sure? (y/n): ") == "y":
+        clearCache()
+    resetFiles()
+
+basePath = "cache"
+
+def shouldDelete(folderPath):
+    response = input(f"Delete '{folderPath}'? (y/n): ").strip().lower()
+    return response in ["y", "yes"]
+
+def resetFiles():
+    for courseId in os.listdir(basePath):
+        coursePath = os.path.join(basePath, courseId)
+        if not os.path.isdir(coursePath):
+            continue
+        for subFolder in os.listdir(coursePath):
+            if input(f"Remove {subFolder}. Are you sure? (y/n): ") == "y":
+                subFolderPath = os.path.join(coursePath, subFolder)
+                if os.path.isdir(subFolderPath):
+                    if shouldDelete(subFolderPath):
+                        shutil.rmtree(subFolderPath)
+                        print(f"Deleted: {subFolderPath}")
+                    else:
+                        print(f"Skipped: {subFolderPath}")

@@ -11,14 +11,14 @@ def sortByAttr(data, attribute):
 
     try:
         return attribute, sorted(
-            data, 
+            data,
             key=lambda item: normalizeValue(item[attribute]) if isinstance(item, dict) else float("inf"),
             reverse=descending
         )
     except KeyError:
         print(f"Invalid attribute: {attribute}")
         return attribute, sorted(
-            data, 
+            data,
             key=lambda item: normalizeValue(item["first"]) if isinstance(item, dict) else float("inf"),
             reverse=descending
         )
@@ -50,8 +50,8 @@ def sendMessage(courseId, studentId, subject, body):
     status = response.json()
     return status
 
-def getCanvasData(courseId, url, params, fileName, folder):
-    cacheDir = Path(f"./cache/{courseId}/{folder}")
+def getCanvasData(url, params, fileName, folder):
+    cacheDir = Path(f"./cache/{folder}")
     cacheDir.mkdir(parents=True, exist_ok=True)
 
     cacheFile = cacheDir / f"{fileName}.json"
@@ -70,17 +70,17 @@ def getCanvasData(courseId, url, params, fileName, folder):
     writeJSON(fileName, data, folder)
 
     return data
-        
+
 def writeJSON(fileName, data, folder):
     # Write JSON data to file
-    with open(f"./cache/{c.courseId}/{folder}/{fileName}.json", "w") as file:
+    with open(f"./cache/{folder}/{fileName}.json", "w") as file:
         json.dump(data, file, indent=4)
         # print(f"Done writing {fileName}")
 
 
 def readJSON(fileName, folder):
     # Read JSON data from file and convert it back to a dictionary
-    path = f"./cache/{c.courseId}/{folder}/{fileName}.json"
+    path = f"./cache/{folder}/{fileName}.json"
 
     with open(path, "r") as file:
         data = json.load(file)
@@ -91,8 +91,3 @@ def checkFolders():
     # Check if the cache directory exists, if not, create it
     if not os.path.exists("./cache"):
         os.makedirs("./cache")
-    
-    # Check if the course-specific directory exists, if not, create it
-    course_path = f"./cache/{c.courseId}"
-    if not os.path.exists(course_path):
-        os.makedirs(course_path)

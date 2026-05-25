@@ -1,12 +1,12 @@
 # from  nameGroups import renameGroups
-from  canvas import startUp, getCourseId, setParams, getStudentList, listAssignments, sendStatusLetters, sendMessage, listTeamMembersByGroup, studentSearch, renameGroups, showAssignmentDates, extendDueDates
+from  canvas import startUp, getCourseId, setParams, getStudentList, listAssignments, sendStatusLetters, sendMessage, listTeamMembersByGroup, studentSearch, renameGroups, showAssignmentDates, extendDueDates, reset
 
 def main():
 
 # Print all command-line arguments
     setParams()
     startUp()
-    
+
     while True:
         print("\nMain Menu")
         print("1.  Team Members       2. Student Details")
@@ -16,7 +16,7 @@ def main():
         print("E(x)it")
 
         # print("5. Rename Groups")
-        
+
         choice = input("Enter your choice: ")
 
         match choice:
@@ -43,8 +43,10 @@ def main():
                 showAssignmentDates()
             case '8':
                 extendDueDates()
-            case 'r':
+            case 'groups':
                 renameGroups()
+            case 'reset':
+                reset()
             case 'x':
                 exit()
             case _:
