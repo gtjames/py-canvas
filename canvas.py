@@ -391,7 +391,7 @@ def getStudentProfile(studentId):
 def getStudent(courseId, studentId):
     global _studentsById
 
-    return _studentsById.get(courseId, {}).get(studentId)
+    return _studentsById.get(studentId)
 
 # Get details on a student
 def showStudent(studentId, name):
