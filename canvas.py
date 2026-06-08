@@ -291,11 +291,12 @@ def listAssignments():
                 print(missingList);
         else:           # this would be ALL
             print(f"{unsub["name"].ljust(50)[:50]}")
+            print(" Points  Submitted At           Title")
             for assignment in displayList:
                 if assignment["missed"]:
-                    print(f"    /{assignment.get("points")}  Missed {assignment["title"]}")
+                    print(f"    /{assignment.get("points")}  {x.fgBYellow}Missed{x.reset} {assignment["title"]}")
                 else:
-                    print(f" {assignment.get("score", 0)}/{assignment.get("points")}  {assignment.get("submittedAt")} {assignment.get("title", "Untitled")}")
+                    print(f" {assignment.get("score", 0)}/{assignment.get("points")}  {x.fgBBlue}{assignment.get("submittedAt")}{x.reset} {assignment.get("title", "Untitled")}")
 
 # Get group categories
 def getStudentGroups(courseId):
@@ -388,14 +389,14 @@ def getStudentList():
 def getStudentProfile(studentId):
     return getCanvasData(f"/users/{studentId}/profile", {}, str(studentId), "students")
 
-def getStudent(courseId, studentId):
+def getStudent(studentId):
     global _studentsById
 
     return _studentsById.get(studentId)
 
 # Get details on a student
 def showStudent(studentId, name):
-        student = getStudent(courseId, studentId)
+        student = getStudent(studentId)
         if student is None:
             print(f"    - {name} has dropped the course")
             return
@@ -425,7 +426,7 @@ def getCourseActivity(courseId):
             }
             for student in _enrollments
         }
-    _enrollments = tmp
+        _enrollments = tmp
     return _enrollments
 
 # traverse from the categories in a course to the groups to the members
@@ -487,6 +488,9 @@ def getLastLogin(studentId):
     return _lastLogin[studentId]["last_login"]
 
 def getAllSubmissions(courseId):
+    #  Get all submissions for all students in the course
+    global _submissionsByStudent
+
     if not _submissionsByStudent:
 
         students    = getStudentList()
@@ -673,38 +677,19 @@ def renameGroups():
 def reset():
     if input("This will reset all the data in the cache. Are you sure? (y/n): ") == "y":
         clearCache()
-    if(input("Also reset the files? (y/n): ") == "y"):
-        resetFiles()
-
-def resetFiles():
-    if input("This will reset all the data files. Are you sure? (y/n): ") == "y":
-        for cacheDir in os.listdir("cache"):
-            for file in os.listdir(f"cache/{cacheDir}"):
-                if input(f"Remove {file}. Are you sure? (y/n): ") == "y":
-                    os.remove(os.path.join("cache", cacheDir, file))
-
-def reset():
-    if input("This will reset all the data in the cache. Are you sure? (y/n): ") == "y":
-        clearCache()
     resetFiles()
 
 basePath = "cache"
 
-def shouldDelete(folderPath):
-    response = input(f"Delete '{folderPath}'? (y/n): ").strip().lower()
-    return response in ["y", "yes"]
-
 def resetFiles():
-    for courseId in os.listdir(basePath):
-        coursePath = os.path.join(basePath, courseId)
-        if not os.path.isdir(coursePath):
-            continue
-        for subFolder in os.listdir(coursePath):
-            if input(f"Remove {subFolder}. Are you sure? (y/n): ") == "y":
-                subFolderPath = os.path.join(coursePath, subFolder)
-                if os.path.isdir(subFolderPath):
-                    if shouldDelete(subFolderPath):
-                        shutil.rmtree(subFolderPath)
-                        print(f"Deleted: {subFolderPath}")
-                    else:
-                        print(f"Skipped: {subFolderPath}")
+    for subFolder in os.listdir(f"{basePath}"):
+        if input(f"Remove {subFolder}. Are you sure? (y/n): ") == "y":
+            subFolder = f"{basePath}/{subFolder}"
+            os.remove(subFolder) if os.path.isfile(subFolder) else shutil.rmtree(subFolder)
+            print(f"Deleted: {subFolder}")
+        else:
+            print(f"Skipped: {subFolder}")
+
+def ask(prompt):
+    response = input(f"{prompt} (y/n): ").strip().lower()
+    return response in ["y", "yes"]

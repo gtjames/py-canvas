@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OAuth Login</title>
+</head>
+<body>
+    <div id="g_id_onload"
+         data-client_id="YOUR_CLIENT_ID"
+         data-callback="handleCredentialResponse">
+    </div>
+
+    <div class="g_id_signin"></div>
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+    <script>
+        function handleCredentialResponse(response) {
+            console.log("JWT Token:", response.credential);
+
+            const payload = JSON.parse(
+                atob(response.credential.split('.')[1])
+            );
+
+            console.log("User:", payload);
+            document.body.innerHTML =
+                `<h2>Welcome ${payload.name}</h2>`;
+        }
+    </script>
+</body>
+</html>

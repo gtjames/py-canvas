@@ -1,4 +1,7 @@
-node_modules/*
 __pycache__/*
 cache/*
+.DS_Store
+proxy/node_modules
+proxy/.DS_Store
+proxy/post-curl
 .DS_Store
