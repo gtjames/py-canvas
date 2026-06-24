@@ -91,39 +91,45 @@ def main():
     assignments = getAssignments()
 
     assignmentMap = {
-        assignment["id"]: assignment["name"]
+        assignment["id"]: assignment #{"name": assignment["name"], "due_at": assignment["due_at"], "points_possible": assignment["points_possible"], "lock_at": assignment["lock_at"]}
         for assignment in assignments
     }
 
+    submissions = {}
     for student in students:
         studentId = student["id"]
         studentName = student["name"]
 
-        print("=" * 60)
-        print(studentName)
-
-        submissions = getStudentSubmissions(studentId)
+        submissions[studentId] = getStudentSubmissions(studentId)
 
         missingAssignments = []
+        submittedAssignments = []
 
-        for submission in submissions:
+        for submission in submissions[studentId]:
             if submission.get("missing"):
                 assignmentId = submission["assignment_id"]
-                assignmentName = assignmentMap.get(
-                    assignmentId,
-                    "Unknown Assignment"
-                )
-
+                assignment = assignmentMap.get(assignmentId)
+                assignmentName = assignment["name"]
                 missingAssignments.append((assignmentId, assignmentName))
+            else:
+                assignmentId = submission["assignment_id"]
+                assignment = assignmentMap.get( assignmentId)
+                submission["name"] = assignment["name"]
+                submittedAssignments.append((assignmentId, submission))
 
+        print("=" * 60)
+        print(studentName)
         if not missingAssignments:
             print("  No missing assignments")
-            continue
+        else:
+            print("  Missing Assignments:")
 
-        print("  Missing Assignments:")
+            for assignmentId, assignmentName in missingAssignments:
+                print(f"    - {assignmentName}   {assignmentMap[assignmentId].get("due_at")} {assignmentMap[assignmentId].get("lock_at")} {assignmentMap[assignmentId].get("points_possible")}")
 
-        for assignmentId, assignmentName in missingAssignments:
-            print(f"    - {assignmentName}")
+        print("  Submitted Assignments:")
+        for assignmentId, submission in submittedAssignments:
+            print(f"    - {submission.get("name")} {submission.get("score")}  {submission.get("due_at")}  {submission.get("lock_at")} {assignmentMap[assignmentId].get("points_possible")}")
 
             # --------------------------------------------------
             # OPTIONAL:

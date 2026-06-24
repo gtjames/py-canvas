@@ -50,6 +50,33 @@ def sendMessage(courseId, studentId, subject, body):
     status = response.json()
     return status
 
+def getPagedData(url, params, fileName, folder):
+    cacheDir = Path(f"./cache/{folder}")
+    cacheDir.mkdir(parents=True, exist_ok=True)
+
+    cacheFile = cacheDir / f"{fileName}.json"
+
+    # return cached data if it exists
+    if cacheFile.exists():
+        return readJSON(fileName, folder)
+
+    # otherwise fetch from Canvas
+    allData = []
+    url = f"{c.canvasURL}{url}"
+    while url:
+        response = requests.get( f"{url}", headers=c.headers, params=params)
+        response.raise_for_status()
+
+        data = response.json()
+        allData.extend(data)
+
+        url = response.links.get("next", {}).get("url")
+
+    # cache the result
+    writeJSON(fileName, allData, folder)
+
+    return allData
+
 def getCanvasData(url, params, fileName, folder):
     cacheDir = Path(f"./cache/{folder}")
     cacheDir.mkdir(parents=True, exist_ok=True)
