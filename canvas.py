@@ -11,7 +11,7 @@ from colors    import x, rowColor
 courseId  = ""
 canvasURL = ""      # attn:
 headers   = ""      # attn:
-basePath = "cache"
+basePath = ""
 
 
 _announcements = {}
@@ -116,6 +116,7 @@ def studentSearch():
     if input("Email Non Participating?(y/n): ") == "y":
         notifyNonParticipating = True
 
+    emailTZ = 'n'
     group = ""
     sortBy = input("Sort By (first, last, group, score, login, tz, email, id, search): ")
 
@@ -139,6 +140,7 @@ def studentSearch():
                 print(f"{"first":10} {"last":15} : {"Pts"} : {"grade":3} : {"activityTime"}");
             case "first" | "tz":
                 print(f"{"  "} {"first":10} {"last":15} : {"group":7} : {"email":36} : {"tz"}")
+                emailTZ = input("Email Time Zone? (y/n): ")
             case "search":
                 print("")
             case _:
@@ -213,6 +215,8 @@ def studentSearch():
                 case "first" | "tz":
                     size += 1
                     print(f"{size:2d} {student["first"]} {student["last"]} : {student["group"]} : {student["email"]} : {student["tz"]}")
+                    if emailTZ == "y" and student["tz"] == "Etc/UTC":  # if the student has no time zone set, send them a message
+                        sendMessage(courseId, [student["id"]], "Time Zone Missing", f"Your time zone is {student["tz"]}. Please update your profile to reflect your current time zone.")
 
                 case _:
                     print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["id"]}")
@@ -639,28 +643,30 @@ def listAnnouncements():
     announcements = getAnnouncements(courseId)
     for announcement in announcements:
         print(f"{announcement["id"]:>8}  {announcement["title"]}")
-        print(f"{x.fgBBlue}          {announcement["url"]}{x.reset}")
+        print(f"{x.fgBBlue}    {" ":>8}  {announcement["url"]}{x.reset}")
 
 def setParams():
     global courseId
-
-    setSchool()
-    return courseId
-
-# Canvas API details
-def setSchool():
     global canvasURL
     global headers
     global courseId
+    global basePath
 
     canvasURL = "https://byupw.instructure.com/api/v1"
-
     courseId = os.getenv("courseId")
     byupw = os.getenv("byupw")
     headers = { "Authorization": f"Bearer {byupw}" }
+    basePath = f"./cache/{courseId}"
+
+def setCourseId():
+    global courseId
+    global basePath
+
+    courseId = input("Enter Course Id: ")
+    basePath = f"./cache/{courseId}"
 
 def startUp():
-    checkFolders()
+    checkFolders      (courseId)
     getStudents       (courseId)       #   _studentList
     getStudentGroups  (courseId)       #   _categories
 

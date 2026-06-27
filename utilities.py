@@ -51,7 +51,7 @@ def sendMessage(courseId, studentId, subject, body):
     return status
 
 def getPagedData(url, params, fileName, folder):
-    cacheDir = Path(f"./cache/{folder}")
+    cacheDir = Path(f"{c.basePath}/{folder}")
     cacheDir.mkdir(parents=True, exist_ok=True)
 
     cacheFile = cacheDir / f"{fileName}.json"
@@ -78,7 +78,7 @@ def getPagedData(url, params, fileName, folder):
     return allData
 
 def getCanvasData(url, params, fileName, folder):
-    cacheDir = Path(f"./cache/{folder}")
+    cacheDir = Path(f"{c.basePath}/{folder}")
     cacheDir.mkdir(parents=True, exist_ok=True)
 
     cacheFile = cacheDir / f"{fileName}.json"
@@ -100,21 +100,20 @@ def getCanvasData(url, params, fileName, folder):
 
 def writeJSON(fileName, data, folder):
     # Write JSON data to file
-    with open(f"./cache/{folder}/{fileName}.json", "w") as file:
+    path = f"{c.basePath}/{folder}/{fileName}.json"
+    with open(f"{path}", "w") as file:
         json.dump(data, file, indent=4)
-        # print(f"Done writing {fileName}")
-
 
 def readJSON(fileName, folder):
     # Read JSON data from file and convert it back to a dictionary
-    path = f"./cache/{folder}/{fileName}.json"
+    path = f"{c.basePath}/{folder}/{fileName}.json"
 
     with open(path, "r") as file:
         data = json.load(file)
         # print(f"Done reading {fileName}")
         return data
 
-def checkFolders():
+def checkFolders(courseId):
     # Check if the cache directory exists, if not, create it
-    if not os.path.exists("./cache"):
-        os.makedirs("./cache")
+    if not os.path.exists(f"{c.basePath}"):
+        os.makedirs(f"{c.basePath}")
