@@ -1,4 +1,3 @@
-# import sys
 import requests
 import calendar
 import os
@@ -6,7 +5,7 @@ import shutil
 
 from utilities import sendMessage, sortByAttr, getCanvasData, checkFolders, getPagedData
 from datetime  import datetime, timezone, timedelta
-from colors    import x, rowColor
+from colors    import x
 
 courseId  = ""
 canvasURL = ""      # attn:
@@ -29,7 +28,6 @@ _studentsById  = {}
 _submissionsByStudent = {}
 _submissionsByAssignment = {}
 _submissionsLookup = {}
-_allSubmission = {}
 _unassigned    = {}
 
 def clearCache():
@@ -48,7 +46,6 @@ def clearCache():
     global _submissionsByStudent
     global _submissionsByAssignment
     global _submissionsLookup
-    global _allSubmission
     global _unassigned
 
     _announcements      = {}
@@ -66,16 +63,16 @@ def clearCache():
     _submissionsByStudent    = {}
     _submissionsByAssignment = {}
     _submissionsLookup       = {}
-    _allSubmission      = {}
     _unassigned         = {}
 
 def listTeamMembersByGroup():
 
 #  show members in all groups, groups of one or not affiliated with a group
     categories = getStudentGroups(courseId)
-    grpType = input("(1) Solo, (0) All, (u) Unassigned: ")
+    grpType = input("(1) Solo, (A) All, (U) Unassigned: ")
 
     while len(grpType) > 0:
+        grpType = grpType.upper()
         cnt = 0
 
         for category in categories:
@@ -83,7 +80,7 @@ def listTeamMembersByGroup():
                 continue
             print(f"{category["name"]}")
             # if we are only interested in "U"nassigned this is the route to take
-            if grpType == "u":
+            if grpType == "U":
                 members = getUnassigned(category["id"])
                 for member in members:
                     showStudent(member["id"], member["name"])
@@ -99,33 +96,25 @@ def listTeamMembersByGroup():
                         # print(f"{group["name"]}")
                         continue
 
-                    if (group["members_count"] == 1 and grpType == "1") or grpType == "0":
+                    if (group["members_count"] == 1 and grpType == "1") or grpType == "A":
                         cnt = listMembers(group, grpType) + cnt
                 print(f"Members: {cnt}")
-        grpType = input("(1) Solo, (0) All, (u) Unassigned: ")
+        grpType = input("(1) Solo, (A) All, (U) Unassigned: ")
 
 def getCourseId():
     return courseId
 
 def studentSearch():
-    global _assignmentsById
-
     studentList = getStudentList()
 
-    notifyNonParticipating = False
-    if input("Email Non Participating?(y/n): ") == "y":
-        notifyNonParticipating = True
+    notifyNonParticipating =  input("Email Non Participating?(y/n): ") == "y"
 
     emailTZ = 'n'
     group = ""
-    sortBy = input("Sort By (first, last, group, score, login, tz, email, id, search): ")
+    sortBy = input("Sort By (first, last, group, score, login, tz, email, id): ")
 
     while len(sortBy) > 0:
-        if sortBy == "search":
-            name = input("Enter First or Last Name: ")
-            students = [s for s in studentList if name.lower() in s["name"].lower()]
-        else:
-            sortBy, students = sortByAttr(studentList, sortBy)
+        sortBy, students = sortByAttr(studentList, sortBy)
         print(f"# of Students: {len(students)}")
 
         size = 0
@@ -138,55 +127,16 @@ def studentSearch():
                 print(f"{"first":10} {"last":15} : {"email":36} : {"login":11} : {"id"}");
             case "score" | "activityTime" | "grade":
                 print(f"{"first":10} {"last":15} : {"Pts"} : {"grade":3} : {"activityTime"}");
-            case "first" | "tz":
-                print(f"{"  "} {"first":10} {"last":15} : {"group":7} : {"email":36} : {"tz"}")
+            case "tz":
+                print(f"{"first":10} {"last":15} : {"Pts"} : {"grade":3} : {"activityTime"}: {"tz"} ");
                 emailTZ = input("Email Time Zone? (y/n): ")
-            case "search":
-                print("")
+            case "first":
+                print(f"{"  "} {"first":10} {"last":15} : {"group":7} : {"email":36} : {"tz"}")
             case _:
                 print(f"{"first":10} {"last":15} : {"email":36} : {"id"}")
 
         for student in students:
             match sortBy:
-                case    "search"    :
-                    studentSubmissions = getSubmissions(courseId)[student["id"]]
-                    missed         = [s for s in studentSubmissions if     s["missed"]]
-                    submitted      = [s for s in studentSubmissions if not s["missed"]]
-                    print(f"{student["first"]} {student["last"]}\nEmail:\t\t{student["email"]}\nGroup:\t\t{student["group"]}\n"
-                          f"Time Zone:\t{student["tz"]}\nLast Login:\t{student["login"]}\nID:\t\t{student["id"]}\n"
-                          f"Score:\t\t{student["score"]}\nGrade:\t\t{student["grade"]}\nTime Active:\t{student["activityTime"]}")
-                    for overrides in _overrides.values():          # list of overrides
-                        for o in overrides:                 # each override object
-                            if student["id"] in (o.get("studentIds") or []):
-                                print(f"        {x.fgYellow}{_assignmentsById.get(o.get("assignmentId"), {}).get("title")}  {o["dueAt"]} {o["lockAt"]}{x.reset}")
-                    if( len(missed) > 0):
-                        # ask to advance due datetime
-                        newLockAt  = input("New Due Date (MM-DD) or Enter to skip: ")
-
-                        if len(newLockAt) != 0:
-                            # // for each missed assignment call extendDueDates
-                            for m in missed:
-                                # // if assignment Due Date is passed and student is missing it, then extend the due date for that student
-                                if datetime.fromisoformat(m["due_at"]) < datetime.now(timezone.utc):
-                                    extendDueDates(student["id"], m["assignmentId"], _assignmentsById.get(m["assignmentId"]).get("dueDate"), newLockAt)
-                            for m in _overrides.values():          # list of overrides
-                                if student["id"] in m.get("studentIds", []):
-                                    print(f"    {x.fgGreen}{m.get("title")}  {m["dueAt"]} {m["lockAt"]}{x.reset}")
-                    if not missed:
-                        print(f"None Missing")
-                    else:
-                        # // if there are missed assignments show the current due dates and ask if they want to extend them
-                        for m in missed:
-                            if (m.get("assignmentId") in _overrides.keys()):          # list of overrides
-                                overs = _overrides.get(m.get("assignmentId"), [])                 # each override object
-                                for o in overs:
-                                    if student["id"] in o.get("studentIds", []):
-                                        print(f"Ovr/Mis {x.fgBBlue}{m.get("title")}  {o["dueAt"]} {o["lockAt"]}{x.reset}")
-                            else:
-                                print(f"Missed  {x.fgBGreen}{m.get("title")}  {_assignmentsById.get(m.get("assignmentId")).get("dueDate")} {_assignmentsById.get(m.get("assignmentId")).get("lockDate")}{x.reset}")
-                    print("\n".join(f"        {a["title"]}\t{a["grade"]}/{a["points"]}\t{a["submittedAt"]}"
-                        for a in submitted) if submitted else "")
-
                 case "group":                       #   sorting by group
                     if group != student["group"]:           #   did the group change?
                         if size > 0:                        #   if so, print the group size
@@ -212,16 +162,70 @@ def studentSearch():
                 case "score" | "activityTime" | "grade":
                     print(f"{student["first"]} {student["last"]} : {student["score"]} : {student["grade"]} : {student["activityTime"]}");
 
-                case "first" | "tz":
+                case "tz":
+                    print(f"{student["first"]} {student["last"]} : {student["score"]} : {student["grade"]} : {student["activityTime"]} : {student["tz"]}");
+                    # if the first 6 characters of the time zone is "Etc/UTC" then email the student to set their time zone
+                    if emailTZ == "y" and student["tz"].startswith("Etc/UTC"):  # if the student has no time zone set, send them a message
+                        sendMessage(courseId, [student["id"]], "Time Zone Missing", f"Your time zone is {student["tz"]}. Please update your profile to reflect your current time zone.")
+
+                case "first":
                     size += 1
                     print(f"{size:2d} {student["first"]} {student["last"]} : {student["group"]} : {student["email"]} : {student["tz"]}")
-                    if emailTZ == "y" and student["tz"] == "Etc/UTC":  # if the student has no time zone set, send them a message
-                        sendMessage(courseId, [student["id"]], "Time Zone Missing", f"Your time zone is {student["tz"]}. Please update your profile to reflect your current time zone.")
 
                 case _:
                     print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["id"]}")
 
-        sortBy = input(f"Sort By (first, last, group, score, login, tz, email, id, search): ")
+        sortBy = input(f"Sort By (first, last, group, score, login, tz, email, id): ")
+
+def searchStudentByName():
+    studentList = getStudentList()
+
+    name = input("Enter First or Last Name: ")
+    students = [s for s in studentList if name.lower() in s["name"].lower()]
+
+    for student in students:
+
+        studentSubmissions = getSubmissions(courseId).get(student["id"], [])
+        _, studentSubmissions = sortByAttr(studentSubmissions, "title")
+
+        missed         = [s for s in studentSubmissions if     s["missed"] and datetime.fromisoformat(s["lock_at"]) < datetime.now(timezone.utc)]
+        submitted      = [s for s in studentSubmissions if not s["missed"]]
+        print(f"{student["first"]} {student["last"]}\nEmail:\t\t{student["email"]}\nGroup:\t\t{student["group"]}\n"
+                f"Time Zone:\t{student["tz"]}\nLast Login:\t{student["login"]}\nID:\t\t{student["id"]}\n"
+                f"Score:\t\t{student["score"]}\nGrade:\t\t{student["grade"]}\nTime Active:\t{student["activityTime"]}")
+        for overrides in _overrides.values():          # list of overrides
+            for ovr in overrides:                 # each override object
+                if student["id"] in (ovr.get("studentIds") or []):
+                    print(f"        {x.fgYellow}{_assignmentsById.get(ovr.get("assignmentId"), {}).get("title")}  {ovr["dueAt"]} {ovr["lockAt"]}{x.reset}")
+        if( len(missed) > 0):
+            # ask to advance due datetime
+            newLockAt  = input("New Due Date (MM-DD) or Enter to skip: ")
+
+            if len(newLockAt) != 0:
+                # // for each missed assignment call extendDueDates
+                for ovr in missed:
+                    # // if assignment Due Date is passed and student is missing it, then extend the due date for that student
+                    if datetime.fromisoformat(ovr["lock_at"]) < datetime.now(timezone.utc):
+                        extendDueDates(student["id"], ovr["assignmentId"], _assignmentsById.get(ovr["assignmentId"]).get("dueDate"), newLockAt)
+                for ovr in _overrides.values():          # list of overrides
+                    if student["id"] in ovr.get("studentIds", []):
+                        print(f"    {x.fgGreen}{ovr.get("title")}  {ovr["dueAt"]} {ovr["lockAt"]}{x.reset}")
+        if not missed:
+            print(f"None Missing")
+        else:
+            # // if there are missed assignments show the current due dates and ask if they want to extend them
+            for ovr in missed:
+                if (ovr.get("assignmentId") in _overrides.keys()):          # list of overrides
+                    overs = _overrides.get(ovr.get("assignmentId"), [])                 # each override object
+                    for ovr in overs:
+                        if student["id"] in ovr.get("studentIds", []):
+                            print(f"Ovr/Mis {x.fgBBlue}{ovr.get("title")}  {ovr["dueAt"]} {ovr["lockAt"]}{x.reset}")
+                else:
+                    print(f"Missed  {x.fgBGreen}{ovr.get("title")}  {_assignmentsById.get(ovr.get("assignmentId")).get("dueDate")}  {_assignmentsById.get(ovr.get("assignmentId")).get("lockDate")}{x.reset}")
+        print("\n".join(f"        {a["title"]}\t{a["grade"]}/{a["points"]}\t{a["submittedAt"]}"
+            for a in submitted) if submitted else "")
+
+    return students
 
 def getStudents(courseId):
     global _studentList
@@ -231,7 +235,7 @@ def getStudents(courseId):
         return _studentsById
 
     params = { "enrollment_type[]": "student", "per_page": 100 }
-    _studentList = getCanvasData(f"/courses/{courseId}/users", params, "students", "st")
+    _studentList = getCanvasData(f"/courses/{courseId}/users", params, "students", "students")
     _studentsById = {}
 
     scores = getCourseActivity(courseId)
@@ -296,26 +300,20 @@ def showAssignmentDates():
         sortBy = input("Sort By (title, dueDate, lockDate, points): ")
 
 def listAssignments():
-    row = 0
     submissionsByStudent = getSubmissions(courseId)
 
     notify = input("Notify?: ")
     msg = input("Message?: ")
-    msg = msg if msg else "\tThe Following assignments have not been submitted.\n\tThese can all be submitted up to the end of Week 4."
+    msg = msg if msg else "\tThe Following assignments have not been submitted.\n\tThese can all be submitted up the UNTIL date. 7 days after the due date."
     missing = input("(A)ll / (M)issing?: ")
-    # convert to lower case for easier comparison
     missing = missing.lower() if missing else "m"
-
     for studentId, studentSubmissions in submissionsByStudent.items():
-        row += 1
         unsubmitted = [s for s in studentSubmissions if s["missed"]]
         submitted   = [s for s in studentSubmissions if not s["missed"]]
         _ ,submitted = sortByAttr(submitted, "title")
         if missing == "m":
-            missingList = "\n".join(f"\t{a["title"]}" for a in unsubmitted) if unsubmitted else f"\tAll Assignments are Submitted"
-            print(f"{_studentsById[studentId]["name"].ljust(50)[:50]}  Missing: {len(unsubmitted)}")
-            print(f"{missingList}\n");
             if notify == "y" and len(unsubmitted) > 0:
+                print(f"{_studentsById[studentId]["name"].ljust(50)[:50]}  Missing: {len(unsubmitted)}")
                 missingList = "\n".join(f"\t{a["title"]}" for a in unsubmitted) if unsubmitted else f"\tAll Assignments are Submitted"
                 # sendMessage(courseId, [studentId], "Missing Assignments", f"{msg}\n\n\t{missingList}")
                 print(missingList);
@@ -358,7 +356,7 @@ def getUnassigned(groupId):
     global _unassigned
 
     if groupId not in _unassigned:
-        _unassigned[groupId] = getCanvasData(f"/group_categories/{groupId}/users", {"unassigned": True, "per_page": 100}, "unassigned", "st")
+        _unassigned[groupId] = getCanvasData(f"/group_categories/{groupId}/users", {"unassigned": True, "per_page": 100}, "unassigned", "groups")
     return _unassigned[groupId]
 
 def cleanupAssignmentData(assignments):
@@ -388,10 +386,9 @@ def getAssignments(courseId):
     global _allOverridesById
 
     if not _assignments:
-        overrides = {}
         _assignmentsById = {}
 
-        tmp1  = getCanvasData(f"/courses/{courseId}/assignments", {"per_page": 100}, "assignments", "st")
+        tmp1  = getCanvasData(f"/courses/{courseId}/assignments", {"per_page": 100}, "assignments", "course")
 
         assignments = cleanupAssignmentData(tmp1)
         _, _assignments = sortByAttr(assignments, "title")
@@ -446,7 +443,7 @@ def getCourseActivity(courseId):
     global _enrollments
 
     if not _enrollments:
-        _enrollments = getCanvasData(f"/courses/{courseId}/enrollments", {"per_page": 100, "type[]": "StudentEnrollment"}, "activity", "st")
+        _enrollments = getCanvasData(f"/courses/{courseId}/enrollments", {"per_page": 100, "type[]": "StudentEnrollment"}, "activity", "course")
         tmp = {
             student["user_id"]: {
                 "lastActivity": (
@@ -480,7 +477,7 @@ def listMembers(group, grpType):
         if input("Email single person teams (y/n)?: ") == "y":
             sendMessage(courseId, studentIds, "You are currently the only member of the team",
                                 "Please identify a team that has others enrolled already that works for your schedule and add your name to the group")
-    if grpType == "0" and input("Email Team?: ") == "y":
+    elif grpType == "a" and input("Email Team?: ") == "y":
         subject = input("Subject: ")
         body    = input("What do you want to say?: ")
         sendMessage(courseId, studentIds, subject, body)
@@ -505,17 +502,11 @@ def extendDueDates(studentId="", assignmentId="", dueAt="", newLockAt=""):
         "assignment_override[until_at]" : f"2026-{newLockAt}T23:59:00Z"
     }
     response = requests.post(f"{canvasURL}/courses/{courseId}/assignments/{assignmentId}/overrides", headers=headers, data=data)
-    # DELETE /api/v1/courses/:course_id/assignments/:assignment_id/overrides/:override_id
-    # PUT /api/v1/courses/:course_id/assignments/:assignment_id/overrides/:override_id
     print(response.status_code)
     if ((response.status_code >= 400) and (response.status_code < 500)):
         print(f"Error: {response.status_code} - {response.text}")
         response = requests.delete(f"{canvasURL}/courses/{courseId}/assignments/{assignmentId}/overrides/51533", headers=headers, data=data)
         print(f"Response: {response.status_code} - {response.text}")
-
-    # print(response.status_code)
-    # status = response.json()
-    # print(status)
 
 # Get members in each group
 def getGroupMembers(groupId):
@@ -528,7 +519,7 @@ def getGroupMembers(groupId):
 # Get Last Login
 def getLastLogin(studentId):
 
-    userData = getCanvasData(f"/users/{studentId}", { "include[]": "last_login" }, str(studentId), "ll")
+    userData = getCanvasData(f"/users/{studentId}", { "include[]": "last_login" }, str(studentId), "lastLogin")
     lastLogin = userData.get("last_login") or "2025-01-01T00:00:00-05:00"
 
     return lastLogin
@@ -542,7 +533,7 @@ def getSubmissions(courseId):
     getAssignments(courseId)        #  this will populate the _assignmentsById dictionary which we need to get the due dates and points for each submission
     if not _submissionsByStudent:
         url = f"/courses/{courseId}/students/submissions"
-        allSubs = getPagedData(url, {"per_page": 100, "student_ids[]": ["all"]}, "allSubs", "st")
+        allSubs = getPagedData(url, {"per_page": 100, "student_ids[]": ["all"]}, "submissions", "course")
 
         allSubmissions = []
         for s in allSubs:
@@ -636,7 +627,7 @@ def getAnnouncements(courseId):
     global _announcements
 
     if not _announcements:
-        _announcements = getCanvasData(f"/courses/{courseId}/discussion_topics?only_announcements=true", {"per_page": 100}, "announcements", "st" )
+        _announcements = getCanvasData(f"/courses/{courseId}/discussion_topics?only_announcements=true", {"per_page": 100}, "announcements", "course" )
     return _announcements
 
 def listAnnouncements():
@@ -649,7 +640,6 @@ def setParams():
     global courseId
     global canvasURL
     global headers
-    global courseId
     global basePath
 
     canvasURL = "https://byupw.instructure.com/api/v1"
@@ -738,3 +728,43 @@ def resetFiles():
 def ask(prompt):
     response = input(f"{prompt} (y/n): ").strip().lower()
     return response in ["y", "yes"]
+
+def test():
+    # find students that have missed assignments by assignment
+    getSubmissions(courseId)
+
+    notify = input("Email Missing? (y/n): ").strip().lower() == "y"
+
+    for assignmentId, assignmentSubmissions in sorted(
+        _submissionsByAssignment.items(),
+        key=lambda item: _assignmentsById.get(item[0], {}).get("title", ""),
+    ):
+        missed = [submission for submission in assignmentSubmissions if submission["missed"]]
+        if not missed:
+            continue
+
+        assignment = _assignmentsById.get(assignmentId, {})
+        title = assignment.get("title", f"Assignment {assignmentId}").strip()
+        print(f"{title}")
+        print(f"  Due: {assignment.get('dueAt', 'Unknown')}  Lock: {assignment.get('lockAt', 'Unknown')}  Missed: {len(missed)}")
+
+        studentIds = []
+        for submission in missed:
+            student = _studentsById.get(submission["userId"])
+            if student is None:
+                continue
+
+            studentIds.append(submission["userId"])
+            print(f"    - {student.get('first')} {student.get('last')} {student.get('email')}")
+
+        data = {
+            "assignment_override[student_ids][]": studentIds,
+            "assignment_override[due_at]"   : f"2026-{assignment.get('dueDate')}T23:59:00Z",
+            "assignment_override[lock_at]"  : f"2026-{assignment.get('lockDate')}T23:59:00Z",
+            "assignment_override[title]"    : f"Extension for student {studentIds}",
+            "assignment_override[until_at]" : f"2026-{assignment.get('lockDate')}T23:59:00Z"
+        }
+        print(f"{data['assignment_override[due_at]']}\n  {data['assignment_override[lock_at]']}\n  {data['assignment_override[title]']}\n {data['assignment_override[until_at]']}")
+
+        # if notify and studentIds:
+        #     sendMessage(courseId, studentIds, f"Missing {title}", f"You have not yet submitted: {title}")
