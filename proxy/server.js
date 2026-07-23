@@ -23,7 +23,7 @@ app.get('/api/canvas/', async (req, res) => {
         const url =
             `${process.env.CANVAS_URL}/api/v1/${canvasPath}` +
             (queryString ? `?${queryString}` : '');
-
+        console.log("Proxying request to:", url);
         const response = await fetch(url, {
             headers: {
                 Authorization: `Bearer ${process.env.CANVAS_TOKEN}`

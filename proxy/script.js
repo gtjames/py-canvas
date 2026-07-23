@@ -44,16 +44,15 @@ async function loadCourseData() {
 
     document.getElementById("loading").style.display = "block";
 
-    fetch("/users/self", { headers: { Authorization: `Bearer ${token}` } }
+    fetch(baseURL + "users/self", { headers: { Authorization: `Bearer ${token}` } }
 )
 .then(r => r.text())
 .then(console.log)
 .catch(console.error);
 
     try {
-
         const submissions = await canvasGet(
-            `/courses/${courseId}/students/submissions?student_ids[]=all&grouped=true&per_page=100`);
+            `courses/${courseId}/students/submissions?student_ids[]=all&grouped=true&per_page=100`);
             console.log("Submissions:", submissions);
     //     const students = await canvasGet(
     //         `/courses/${courseId}/users?enrollment_type[]=student&per_page=100`,
@@ -61,7 +60,7 @@ async function loadCourseData() {
     //     );
 
     //     const assignments = await canvasGet(
-    //         `/courses/${courseId}/assignments?per_page=100`,
+    //         `courses/${courseId}/assignments?per_page=100`,
     //         token
     //     );
 
